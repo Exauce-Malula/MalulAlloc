@@ -75,9 +75,51 @@ namespace MalulAlloc{
         arena->utilisedBytes = 0;                           // Utilised bytes accordingly set to zero.
     }
 
-    void* malula_alloc(unsigned int size){
+    void* malula_alloc(unsigned int size){                  // Simulates the malloc function.
+        if (size == 0){                                     // Returns a nullptr if the size is zero.
+            return nullptr;
+        }
+
+        void* memory = mmap(NULL, size, PROT_READ | PROT_WRITE, 
+        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);                         // Kernel allocates memory to an address (decided by the kernel), is read and write available.
         
+        if (memory == MAP_FAILED){                                   // Exits if memory allocation fails.
+            printf("Memory allocation failed!\n");
+            exit(1);
+        }
+
+        printf("Memory allocation successful! \n");
+        return memory;                                               // Returns void pointer which has the allocated memory.
     }
+
+    void* malula_calloc(unsigned int size){                                 // Simulates calloc function.
+        void* memory = malula_alloc(size);                                  // Calls upon malula_alloc to allocate memory.
+        std::memset(memory, 0, size);                                       // Sets all memory locations equal to zero.
+        return memory;                                                      // Returns the memory. 
+    }
+
+    void* malula_realloc(void* src, unsigned int newSize){      // Simulates realloc.
+        if (newSize <= sizeof(src)){                            // Returns the original source pointer if the new size is less than or the same as the original object's size.
+            return src;
+        }
+
+        void* memory = malula_alloc(newSize);                   // Calls upon malula_alloc to obtain more memory.
+        std::memcpy(memory, src, newSize);                      // The contents of the original object is copied to the new object.
+        malula_free(src);                                       // Old memory/object is freed.
+
+        return memory;                                          // The reallocated memory is returned.
+    }
+
+    void malula_free(void* memory){                             // Frees memory allocated via malula_alloc or malula_calloc.
+        if (munmap(memory, sizeof(memory)) != 0){               // If munmap fails, error message printed and program exits.
+            printf("Freeing memory failed!\n");
+            exit(1);
+        }
+
+        memory = nullptr;                                       // Set equal to nullptr to avoid dangling pointer.
+        printf("Memory freed!");
+    }
+    
 }
 
 #endif
