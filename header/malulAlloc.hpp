@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <cstring>
 
+#define PAGE 4096
+
 namespace MalulAlloc{
 
     typedef struct Arena{               // Struct declared for an arena object.
@@ -75,49 +77,92 @@ namespace MalulAlloc{
         arena->utilisedBytes = 0;                           // Utilised bytes accordingly set to zero.
     }
 
+    typedef struct Malul_AllocLL{
+        unsigned char* memory;
+        struct Malul_AllocLL* next;
+        unsigned int utilisedBytes;
+    }Malul_AllocLL;
+
+    Malul_AllocLL* globalMemory = nullptr;
+        
+
     void* malula_alloc(unsigned int size){                  // Simulates the malloc function.
-        if (size == 0){                                     // Returns a nullptr if the size is zero.
+        if (size == 0){                                     // Base case where a nullptr is returned if the size is zero.
             return nullptr;
         }
 
-        void* memory = mmap(NULL, size, PROT_READ | PROT_WRITE, 
-        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);                         // Kernel allocates memory to an address (decided by the kernel), is read and write available.
+        Malul_AllocLL* currentNode = globalMemory;
+        while (currentNode != nullptr){
+            currentNode = currentNode->next;
+        }
+
+        // Kernel allocates memory to an address (decided by the kernel), is read and write available.
+        currentNode = (Malul_AllocLL*)mmap(NULL, sizeof(Malul_AllocLL), PROT_READ | PROT_WRITE, 
+                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);                                        
         
-        if (memory == MAP_FAILED){                                   // Exits if memory allocation fails.
-            printf("Memory allocation failed!\n");
+        if (currentNode == MAP_FAILED){
+            printf("\nNode allocation failed!\n");
+            return nullptr;
             exit(1);
         }
 
-        printf("Memory allocation successful! \n");
-        return memory;                                               // Returns void pointer which has the allocated memory.
-    }
+        // Kernel allocates memory to an address (decided by the kernel), is read and write available.
+        currentNode->memory = (unsigned char*)mmap(NULL, size, PROT_READ | PROT_WRITE, 
+                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);   
 
-    void* malula_calloc(unsigned int size){                                 // Simulates calloc function.
-        void* memory = malula_alloc(size);                                  // Calls upon malula_alloc to allocate memory.
-        std::memset(memory, 0, size);                                       // Sets all memory locations equal to zero.
-        return memory;                                                      // Returns the memory. 
-    }
-
-    void* malula_realloc(void* src, unsigned int newSize){      // Simulates realloc.
-        if (newSize <= sizeof(src)){                            // Returns the original source pointer if the new size is less than or the same as the original object's size.
-            return src;
+        if (currentNode->memory == MAP_FAILED){
+            printf("\nMemory allocation failed!\n");
+            return nullptr;
+            exit(1);
         }
 
-        void* memory = malula_alloc(newSize);                   // Calls upon malula_alloc to obtain more memory.
-        std::memcpy(memory, src, newSize);                      // The contents of the original object is copied to the new object.
-        malula_free(src);                                       // Old memory/object is freed.
+        currentNode->utilisedBytes = size;
+        currentNode->next = nullptr;
 
-        return memory;                                          // The reallocated memory is returned.
+        return currentNode->memory;
+
     }
 
-    void malula_free(void* memory){                             // Frees memory allocated via malula_alloc or malula_calloc.
-        if (munmap(memory, sizeof(memory)) != 0){               // If munmap fails, error message printed and program exits.
+    void malula_free(void* object){
+        if (object == nullptr){
+            printf("\nUnable to free nullptr!\n");
+            exit(1);
+        }
+        
+
+        Malul_AllocLL* currentNode = globalMemory;
+        Malul_AllocLL* prevNode = nullptr;
+        Malul_AllocLL* nextNode = nullptr;
+
+        
+
+        while ((currentNode != nullptr) && (currentNode->memory != object)){
+            prevNode = currentNode;
+            currentNode = currentNode->next;
+            nextNode = currentNode->next;
+        }
+
+        printf("\n%d\n", currentNode->utilisedBytes);
+
+        if (prevNode != nullptr){
+            prevNode->next = nextNode;
+        }
+        
+        unsigned char* memory = currentNode->memory;
+
+        if (munmap(memory, currentNode->utilisedBytes) != 0){      // If munmap fails, error message printed and program exits.
             printf("Freeing memory failed!\n");
             exit(1);
         }
 
-        memory = nullptr;                                       // Set equal to nullptr to avoid dangling pointer.
-        printf("Memory freed!");
+        currentNode->memory = nullptr;
+        if (munmap(currentNode, sizeof(Malul_AllocLL)) != 0){      // If munmap fails, error message printed and program exits.
+            printf("Freeing node failed!\n");
+            exit(1);
+        }
+
+        currentNode = nullptr;
+        
     }
     
 }

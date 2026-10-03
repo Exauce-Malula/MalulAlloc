@@ -3,8 +3,8 @@
 
 /*
     TODO:
-    Resolve freeing memory once the user is done with their object. (might be to do with size checks?)
-    Test realloc and calloc.
+    Resolve Linked List traversal when deleting a node, the current node is currently nullptr, right node is not being accessed. 
+    Add and test realloc and calloc.
 */
 
 int main(){
@@ -25,9 +25,12 @@ int main(){
     MalulAlloc::freeArena(&arena);
 
 
+
     char* string = (char*)MalulAlloc::malula_alloc((sizeof(char)) * 128);                               // allocates 128 bytes for a string. 
     string = {"\nHello, my name is Exauce! This is a test to see if my malloc function works!\n\0"};    
     printf("%s", string);
-    MalulAlloc::malula_free(string);                                        
+    MalulAlloc::malula_free(string);
+    
+   
     return 0;
 }
