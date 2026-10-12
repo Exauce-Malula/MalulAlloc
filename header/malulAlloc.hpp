@@ -82,7 +82,7 @@ namespace MalulAlloc{
         unsigned int utilisedBytes;
     }Malul_AllocLL;
 
-    static Malul_AllocLL* globalMemory = nullptr;      // Global linked list, which keeps track of memory allocated via malloc.
+    inline Malul_AllocLL* globalMemory = nullptr;      // Global linked list, which keeps track of memory allocated via malloc.
         
 
     void* malula_alloc(unsigned int size){                  // Simulates the malloc function.
@@ -121,66 +121,49 @@ namespace MalulAlloc{
 
     void malula_free(void* object){                             // Frees memory via traversing the linked list.
         if (object == nullptr){                                 // Base case, if programmer attempts to free nullptr.
-            printf("\nUnable to free nullptr!\n");
-            exit(1);
+            return;
         }
         
         Malul_AllocLL* currentNode = globalMemory;              // Sets current pointer to the globalMemory linked list.
+        Malul_AllocLL* prevNode = nullptr;                      // Sets prev node to nullptr, before the first node.
         unsigned char* memory = nullptr;                        // Will point to the memory intended to free within a node.
-
-        if (currentNode->next == nullptr){                             // If there is only one node within the linked list.
-            memory = currentNode->memory;                              // Sets current memory pointer to the memory within node.
-            if (munmap(memory, currentNode->utilisedBytes) != 0){      // If munmap fails, error message printed and program exits.
-                munmap(currentNode, sizeof(Malul_AllocLL));            // Frees node object. 
-                printf("Freeing memory failed!\n");
-                exit(1);
-            }
-
-            currentNode->memory = nullptr;                             // Resolves dangling pointer.
-            if (munmap(currentNode, sizeof(Malul_AllocLL)) != 0){      // If munmap fails, error message printed and program exits.
-                printf("Freeing node failed!\n");
-                exit(1);
-            }
+                                                                     
+        while (currentNode != nullptr && currentNode->memory != object){                                      // Traverses until reaches the end of the linked list and until it reaches the memory.
+            prevNode = currentNode;
+            currentNode = currentNode->next;
         }
-        else{                                                                           // For linked list longer than one node.
-            Malul_AllocLL* prevNode = nullptr;                                          // Sets prev node to nullptr, before the first node.
-            while (currentNode->memory != object){                                      // Traverses until reaches the end of the linked list and until it reaches the memory.
-                prevNode = currentNode;
-                currentNode = currentNode->next;
-                if (currentNode->next == nullptr){
-                    exit(1);
-                    break;
-                }
-            }
 
-            /*
-            if (object != currentNode->memory){
-                printf("Can't free!\n");
-                exit(1);
-            }
-            */
+        if (currentNode == nullptr){
+            printf("Reached nullptr!\n");
+            exit(1);
+        }
 
-            prevNode->next = currentNode->next;                        // Sets previous node's next pointer to the next node.
-            memory = currentNode->memory;
-            if (munmap(memory, currentNode->utilisedBytes) != 0){      // If munmap fails, error message printed and program exits.
-                munmap(currentNode, sizeof(Malul_AllocLL));
-                printf("Freeing memory failed!\n");
-                exit(1);
-            }
+        memory = currentNode->memory;
 
-            currentNode->memory = nullptr;                             // Resolves dangling pointer.
-            if (munmap(currentNode, sizeof(Malul_AllocLL)) != 0){      // If munmap fails, error message printed and program exits.
-                printf("Freeing node failed!\n");
-                exit(1);
-            }
+        if (prevNode != nullptr){
+            prevNode->next = currentNode->next;
+        }
+        else{
+            globalMemory = currentNode->next;
+        }
+
+        if (munmap(memory, currentNode->utilisedBytes) != 0){      // If munmap fails, error message printed and program exits.
+            munmap(currentNode, sizeof(Malul_AllocLL));
+            printf("Freeing memory failed!\n");
+            exit(1);
+        }
+
+        currentNode->memory = nullptr;                             // Resolves dangling pointer.
+        if (munmap(currentNode, sizeof(Malul_AllocLL)) != 0){      // If munmap fails, error message printed and program exits.
+            printf("Freeing node failed!\n");
+            exit(1);
         }
 
         memory = nullptr;               // Resolves dangling pointer.
         currentNode = nullptr;          // Resolves dangling pointer.
-        printf("Memory freed!\n");
-        
-    }
-    
+        printf("Memory freed!\n");     
+    }  
 }
+
 
 #endif
