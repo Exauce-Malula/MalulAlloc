@@ -5,6 +5,7 @@
     TODO:
     Resolve Linked List traversal when deleting a node, the current node is currently nullptr, right node is not being accessed. 
     Add and test realloc and calloc.
+    Fix padding within pushMemArena.
 */
 
 int main(){
@@ -29,8 +30,10 @@ int main(){
     char* string = (char*)MalulAlloc::malula_alloc((sizeof(char)) * 128);                               // allocates 128 bytes for a string. 
     string = {"\nHello, my name is Exauce! This is a test to see if my malloc function works!\n\0"};    
     printf("%s", string);
+
+    int* array = (int*)MalulAlloc::malula_alloc(sizeof(int) * 10);
+
+    MalulAlloc::malula_free(array);
     MalulAlloc::malula_free(string);
-    
-   
     return 0;
 }
